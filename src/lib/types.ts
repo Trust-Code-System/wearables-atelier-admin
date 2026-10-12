@@ -20,6 +20,16 @@ export interface Product {
   createdAt: string;
 }
 
+export interface StockAdjustment {
+  id: string;
+  productId: string;
+  productName: string;
+  before: number;
+  after: number;
+  reason: string;
+  createdAt: string;
+}
+
 export interface CartItem {
   productId: string;
   /** null for one-size items */
@@ -56,5 +66,8 @@ export interface Order {
   items: OrderItem[];
   totalNGN: number;
   status: OrderStatus;
+  internalNote?: string;
+  courier?: string;
+  trackingNumber?: string;
   createdAt: string;
 }

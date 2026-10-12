@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useCurrency, useOrders } from "@/lib/store";
 import { convertFromNGN, NGN_PER_USD } from "@/lib/format";
+import { isRecognizedSale } from "@/lib/admin-data";
+import type { Order } from "@/lib/types";
 import {
   ChartContainer,
   ChartTooltip,
@@ -27,8 +29,9 @@ function compact(value: number, currency: "NGN" | "USD"): string {
   return currency === "USD" ? `$${formatted}` : `₦${formatted}`;
 }
 
-export function RevenueChart() {
-  const { orders } = useOrders();
+export function RevenueChart({ orders: selectedOrders }: { orders?: Order[] } = {}) {
+  const { orders: allOrders } = useOrders();
+  const orders = selectedOrders ?? allOrders;
   const { currency } = useCurrency();
 
   const data = useMemo(() => {
@@ -45,7 +48,7 @@ export function RevenueChart() {
       });
     }
     for (const order of orders) {
-      if (order.status === "cancelled") continue;
+      if (!isRecognizedSale(order)) continue;
       const d = new Date(order.createdAt);
       const bucket = months.find((m) => m.key === `${d.getFullYear()}-${d.getMonth()}`);
       if (bucket) {
@@ -67,7 +70,7 @@ export function RevenueChart() {
         <div>
           <h2 className="font-display text-xl tracking-tight">Revenue</h2>
           <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
-            Last 6 months · {currency === "USD" ? `converted at ₦${NGN_PER_USD}/$` : "in Naira"}
+            Last 6 calendar months · paid and fulfilled · {currency === "USD" ? `converted at ₦${NGN_PER_USD}/$` : "in Naira"}
           </p>
         </div>
       </div>

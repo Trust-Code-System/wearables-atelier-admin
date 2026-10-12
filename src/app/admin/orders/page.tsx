@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDownIcon, ReceiptTextIcon } from "lucide-react";
+import { ChevronDownIcon, DownloadIcon, ReceiptTextIcon } from "lucide-react";
 import { useCurrency, useOrders } from "@/lib/store";
 import { useAdminView } from "@/components/admin/admin-view-context";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -19,6 +19,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
+import { downloadCsv } from "@/lib/export-csv";
+import { ManagementSearch } from "@/components/admin/management-ui";
+import { Button } from "@/components/ui/button";
+import { OrderDetailsForm } from "@/components/admin/order-details-form";
+import { toast } from "sonner";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   paid: "default",
@@ -35,12 +40,14 @@ export default function AdminOrders() {
   const { tab: storedTab } = useAdminView();
   const tab = ["all", ...STATUSES].includes(storedTab) ? storedTab : "all";
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   // Toolbar tab filters by status
-  const visible = tab === "all" ? orders : orders.filter((o) => o.status === tab);
+  const visible = orders.filter((o) => (tab === "all" || o.status === tab) && `${o.reference} ${o.customer.name} ${o.customer.email} ${o.customer.phone}`.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3"><ManagementSearch value={query} onChange={setQuery} placeholder="Search orders or customers…" /><Button variant="outline" disabled={!visible.length} onClick={() => downloadCsv("wearables-orders.csv", [["Reference", "Customer", "Email", "Status", "Total NGN", "Date", "Courier", "Tracking number"], ...visible.map((order) => [order.reference, order.customer.name, order.customer.email, order.status, order.totalNGN, order.createdAt, order.courier ?? "", order.trackingNumber ?? ""])])}><DownloadIcon />Export orders</Button></div>
       <p className="text-[0.8125rem] text-muted-foreground tabular-nums">
         {visible.length} of {orders.length} orders — newest first
       </p>
@@ -52,15 +59,15 @@ export default function AdminOrders() {
           </div>
           <p className="font-display text-xl">No orders yet</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Orders placed through the storefront checkout will appear here.
+            This browser has no order records. Storefront syncing will be added with the shared backend.
           </p>
         </div>
       ) : (
         visible.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-20 text-center">
-            <p className="font-display text-lg">No {tab} orders</p>
+            <p className="font-display text-lg">No matching orders</p>
             <p className="max-w-xs text-sm text-muted-foreground">
-              Orders with this status will appear here.
+              Try another search or status tab.
             </p>
           </div>
         ) : (
@@ -141,7 +148,7 @@ export default function AdminOrders() {
                           <p className="eyebrow">Status</p>
                           <Select
                             value={order.status}
-                            onValueChange={(v) => setStatus(order.id, v as OrderStatus)}
+                            onValueChange={(v) => { if (v) { setStatus(order.id, v as OrderStatus); toast.success("Order status updated", { description: "Saved locally. Inventory is unchanged." }); } }}
                           >
                             <SelectTrigger className="w-40" aria-label="Order status">
                               <SelectValue />
@@ -158,6 +165,7 @@ export default function AdminOrders() {
                           </Select>
                         </div>
                       </div>
+                      <OrderDetailsForm key={order.id} order={order} />
                     </motion.div>
                   )}
                 </AnimatePresence>

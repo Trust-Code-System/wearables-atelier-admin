@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowUpRightIcon, PackageIcon, ReceiptTextIcon, TriangleAlertIcon, WalletIcon } from "lucide-react";
 import { useCatalog, useCurrency, useOrders } from "@/lib/store";
 import { formatPrice, formatDate } from "@/lib/format";
+import { isRecognizedSale } from "@/lib/admin-data";
 import { RevenueChart } from "@/components/admin/revenue-chart";
 import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ export default function AdminOverview() {
   const { currency } = useCurrency();
 
   const revenue = orders
-    .filter((o) => o.status !== "cancelled")
+    .filter(isRecognizedSale)
     .reduce((sum, o) => sum + o.totalNGN, 0);
   const lowStock = products.filter((p) => p.stock <= 8);
 
@@ -37,7 +38,7 @@ export default function AdminOverview() {
   const topProducts = (() => {
     const tally = new Map<string, { qty: number; revenue: number }>();
     for (const order of orders) {
-      if (order.status === "cancelled") continue;
+      if (!isRecognizedSale(order)) continue;
       for (const item of order.items) {
         const t = tally.get(item.productId) ?? { qty: 0, revenue: 0 };
         t.qty += item.qty;
@@ -60,17 +61,17 @@ export default function AdminOverview() {
       icon: WalletIcon,
       label: "Revenue",
       value: formatPrice(revenue, currency),
-      hint: `${orders.length} orders total`,
+      hint: "Paid and fulfilled orders only",
     },
     {
       icon: ReceiptTextIcon,
       label: "Pending orders",
       value: String(orders.filter((o) => o.status === "pending").length),
-      hint: "Awaiting fulfilment",
+      hint: "Awaiting payment",
     },
     {
       icon: PackageIcon,
-      label: "Products live",
+      label: "Catalog products",
       value: String(products.length),
       hint: `${products.filter((p) => p.category === "clothing").length} clothing · ${products.filter((p) => p.category === "jewelry").length} jewelry`,
     },
@@ -84,6 +85,7 @@ export default function AdminOverview() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4 text-sm"><p className="text-muted-foreground">Browser prototype · Storefront data is not connected yet.</p><Link href="/admin/inventory" className="inline-flex items-center gap-2 font-medium text-primary">Review inventory<ArrowUpRightIcon className="size-4" /></Link></div>
       <StaggerGroup className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StaggerItem key={stat.label}>

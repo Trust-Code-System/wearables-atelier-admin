@@ -70,6 +70,7 @@ function DeleteButton({ onConfirm, name }: { onConfirm: () => void; name: string
 export default function AdminProducts() {
   const { products, deleteProduct, resetCatalog } = useCatalog();
   const { currency } = useCurrency();
+  const [confirmReset, setConfirmReset] = useState(false);
   const { tab: storedTab, sort } = useAdminView();
   const tab = ["all", "clothing", "jewelry"].includes(storedTab) ? storedTab : "all";
 
@@ -95,17 +96,19 @@ export default function AdminProducts() {
         <p className="text-[0.8125rem] text-muted-foreground tabular-nums">
           {visible.length} of {products.length} pieces
         </p>
-        <button
+        <div className="flex flex-wrap items-center justify-end gap-2">
+        {confirmReset && <><span className="text-xs text-muted-foreground">Replace all products with demo data?</span><Button size="sm" variant="destructive" onClick={() => { resetCatalog(); setConfirmReset(false); toast("Catalog reset", { description: "Restored the original sample pieces." }); }}>Confirm reset</Button><Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button></>}
+        {!confirmReset && <button
           type="button"
           onClick={() => {
-            resetCatalog();
-            toast("Catalog reset", { description: "Restored the original sample pieces." });
+            setConfirmReset(true);
           }}
           className="inline-flex items-center gap-1.5 text-[0.75rem] text-muted-foreground transition-colors duration-150 hover:text-foreground"
         >
           <RotateCcwIcon className="size-3" />
           Reset sample data
-        </button>
+        </button>}
+        </div>
       </div>
 
       {products.length === 0 ? (
@@ -115,7 +118,7 @@ export default function AdminProducts() {
           </div>
           <p className="font-display text-xl">No products yet</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Add your first piece — it will appear on the storefront immediately.
+            Add your first piece to this browser’s catalog. Storefront syncing comes with the shared backend.
           </p>
           <Button render={<Link href="/admin/products/new" />}>
             <PlusIcon data-icon="inline-start" />

@@ -9,6 +9,10 @@ import {
   PackagePlusIcon,
   ReceiptTextIcon,
   StoreIcon,
+  PackageCheckIcon,
+  UsersIcon,
+  ChartNoAxesCombinedIcon,
+  Settings2Icon,
 } from "lucide-react";
 import { useCatalog, useOrders } from "@/lib/store";
 import { storefrontHref } from "@/lib/storefront-url";
@@ -27,6 +31,10 @@ const PAGES = [
   { href: "/admin/products", label: "Products", icon: PackageIcon },
   { href: "/admin/products/new", label: "New product", icon: PackagePlusIcon },
   { href: "/admin/orders", label: "Orders", icon: ReceiptTextIcon },
+  { href: "/admin/inventory", label: "Inventory", icon: PackageCheckIcon },
+  { href: "/admin/customers", label: "Customers", icon: UsersIcon },
+  { href: "/admin/analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon },
+  { href: "/admin/settings", label: "Settings", icon: Settings2Icon },
   { href: storefrontHref(), label: "Storefront", icon: StoreIcon },
 ];
 

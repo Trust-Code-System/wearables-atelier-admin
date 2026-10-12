@@ -14,10 +14,15 @@ import {
   Settings2Icon,
   ShoppingBagIcon,
   SunIcon,
+  ChartNoAxesCombinedIcon,
+  PackageCheckIcon,
+  UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCatalog, useOrders } from "@/lib/store";
 import { storefrontHref } from "@/lib/storefront-url";
+import { downloadCsv } from "@/lib/export-csv";
+import { customersFromOrders, stockLevel } from "@/lib/admin-data";
 import { AdminSearch } from "@/components/admin/admin-search";
 import {
   AdminViewProvider,
@@ -44,6 +49,9 @@ function titleFor(pathname: string): string {
   if (pathname.startsWith("/admin/products/")) return "Edit product";
   if (pathname.startsWith("/admin/orders")) return "Orders";
   if (pathname.startsWith("/admin/settings")) return "Settings";
+  if (pathname.startsWith("/admin/inventory")) return "Inventory";
+  if (pathname.startsWith("/admin/customers")) return "Customers";
+  if (pathname.startsWith("/admin/analytics")) return "Analytics";
   return "Admin";
 }
 
@@ -51,28 +59,7 @@ const PRODUCT_TABS = ["all", "clothing", "jewelry"];
 const ORDER_TABS = ["all", "pending", "paid", "fulfilled", "cancelled"];
 
 function exportProductsCsv(products: ReturnType<typeof useCatalog>["products"]) {
-  const header = "id,name,category,price_ngn,compare_at_ngn,stock,sizes,badge";
-  const rows = products.map((p) =>
-    [
-      p.id,
-      `"${p.name.replaceAll('"', '""')}"`,
-      p.category,
-      p.priceNGN,
-      p.compareAtNGN ?? "",
-      p.stock,
-      `"${p.sizes.join(" ") || "one-size"}"`,
-      p.badge ?? "",
-    ].join(","),
-  );
-  const blob = new Blob([[header, ...rows].join("\n")], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "wearables-atelier-products.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadCsv("wearables-atelier-products.csv", [["id", "name", "category", "price_ngn", "compare_at_ngn", "stock", "sizes", "badge"], ...products.map((p) => [p.id, p.name, p.category, p.priceNGN, p.compareAtNGN ?? "", p.stock, p.sizes.join(" ") || "one-size", p.badge ?? ""])]);
   toast.success("Catalog exported", {
     description: `${products.length} products saved as CSV.`,
   });
@@ -97,7 +84,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     ? "overview"
     : pathname.startsWith("/admin/products")
       ? "products"
-      : pathname.startsWith("/admin/orders") ? "orders" : "settings";
+      : pathname.split("/")[2] || "overview";
 
   return (
     <div className={`admin-ui h-dvh ${dark ? "dark" : ""}`} data-lenis-prevent>
@@ -127,6 +114,9 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               href: "/admin/orders",
               count: pendingCount > 0 ? pendingCount : undefined,
             },
+            { id: "inventory", label: "Inventory", icon: PackageCheckIcon, href: "/admin/inventory", count: products.filter((p) => stockLevel(p.stock) !== "healthy").length || undefined },
+            { id: "customers", label: "Customers", icon: UsersIcon, href: "/admin/customers", count: customersFromOrders(orders).length || undefined },
+            { id: "analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon, href: "/admin/analytics" },
             { id: "settings", label: "Settings", icon: Settings2Icon, href: "/admin/settings" },
           ],
         },
@@ -140,7 +130,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         },
       ]}
       title={titleFor(pathname)}
-      status="Live"
+      status="Prototype"
+      statusTone="neutral"
       headerActions={
         <>
         <DashboardButton variant="secondary" size="icon" aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setDark((value) => !value)}>

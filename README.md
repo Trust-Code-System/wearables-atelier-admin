@@ -1,6 +1,6 @@
 # Wearables Atelier admin
 
-Separate admin console for catalog management, orders, sales overview and store settings. It retains the original ObsidianUI dashboard style with the supplied Wearables by Ashabi logo. This repository contains no customer storefront routes.
+Separate admin console for catalog management, inventory, customers, orders, sales reports and store settings. It retains the original ObsidianUI dashboard style with the supplied Wearables by Ashabi logo. This repository contains no customer storefront routes.
 
 ![Admin console](docs/previews/admin-separated.jpg)
 
@@ -19,7 +19,7 @@ npm run dev
 
 Open [localhost:3200/admin](http://localhost:3200/admin). `/` redirects there. Product, order and settings paths keep their `/admin` prefix. Start the separate storefront from its own folder at `http://localhost:3100`.
 
-Verify with `npm run lint` and `npm run build`. Run the production build locally with `npm run start -- --port 3200`.
+Verify with `npm run lint`, `npm test` and `npm run build`. Run the production build locally with `npm run start -- --port 3200`.
 
 ## Configure storefront links
 
@@ -33,7 +33,7 @@ For deployment use the storefront's actual HTTPS address. This value is public a
 
 ## Structure
 
-- `src/app/admin` — overview, products, order management and settings.
+- `src/app/admin` — overview, products, inventory, customers, analytics, order management and settings.
 - `src/components/admin` — search, view state and revenue chart.
 - `src/components/block/dashboard-shell.*` — ObsidianUI shell.
 - `src/lib/store.tsx` — prototype catalog, order and settings stores.
@@ -47,6 +47,8 @@ The shell was adapted from the [official ObsidianUI dashboard shell registry](ht
 ## Prototype data
 
 The owner chose to split the projects now and connect a shared backend next. Admin changes and storefront orders **do not sync yet**. This address starts with its own demo data; the original browser data is preserved at the storefront's old origin. Payment is simulated, and key fields are browser-storage placeholders. Do not enter live payment secrets here.
+
+Inventory includes stock-level filters, total quantities, retail valuation, adjustments with reasons and a recent history. Customers are grouped from order contacts with purchase histories, not authenticated customer accounts. Orders support search, status filters, internal notes and courier/tracking details. Analytics uses paid and fulfilled orders only, with date filters and CSV exports. See [admin workflows](docs/admin-workflows.md) for behavior and limitations.
 
 Authentication is not implemented. Keep any prototype preview under the hosting provider's access controls; admin authentication, shared database/API, migration and server-only payment configuration belong to the next phase. The noindex metadata discourages indexing but is not authentication.
 

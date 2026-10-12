@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { CartItem, Currency, Order, Product } from "@/lib/types";
+import type { CartItem, Currency, Order, Product, StockAdjustment } from "@/lib/types";
+import { validStock } from "@/lib/admin-data";
 import { seedProducts, migrateBrandCatalog, legacyProductSlugIds } from "@/lib/products";
 
 /* ------------------------------------------------------------------ */
@@ -148,6 +149,8 @@ const CatalogContext = createContext<{
   deleteProduct: (id: string) => void;
   resetCatalog: () => void;
   getProduct: (slug: string) => Product | undefined;
+  stockHistory: StockAdjustment[];
+  adjustStock: (id: string, expected: number, quantity: number, reason: string) => boolean;
 } | null>(null);
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
@@ -156,6 +159,14 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     seedProducts,
     migrateBrandCatalog,
   );
+  const [stockHistory, setStockHistory] = usePersistentState<StockAdjustment[]>("wa:stock-history", []);
+  const adjustStock = useCallback((id: string, expected: number, quantity: number, reason: string) => {
+    const product = products.find((p) => p.id === id);
+    if (!product || product.stock !== expected || !validStock(quantity) || !reason.trim() || quantity === expected) return false;
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, stock: quantity } : p));
+    setStockHistory((prev) => [{ id: crypto.randomUUID(), productId: id, productName: product.name, before: product.stock, after: quantity, reason: reason.trim(), createdAt: new Date().toISOString() }, ...prev].slice(0, 100));
+    return true;
+  }, [products, setProducts, setStockHistory]);
 
   const addProduct = useCallback(
     (p: Product) => setProducts((prev) => [p, ...prev]),
@@ -189,8 +200,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       deleteProduct,
       resetCatalog,
       getProduct,
+      stockHistory,
+      adjustStock,
     }),
-    [products, addProduct, updateProduct, deleteProduct, resetCatalog, getProduct],
+    [products, addProduct, updateProduct, deleteProduct, resetCatalog, getProduct, stockHistory, adjustStock],
   );
 
   return (
@@ -329,6 +342,7 @@ const OrdersContext = createContext<{
   orders: Order[];
   addOrder: (o: Order) => void;
   setStatus: (id: string, status: Order["status"]) => void;
+  updateOrder: (id: string, patch: Pick<Order, "internalNote" | "courier" | "trackingNumber">) => void;
 } | null>(null);
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
@@ -343,10 +357,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o))),
     [setOrders],
   );
+  const updateOrder = useCallback((id: string, patch: Pick<Order, "internalNote" | "courier" | "trackingNumber">) => {
+    setOrders((prev) => prev.map((order) => order.id === id ? { ...order, ...patch } : order));
+  }, [setOrders]);
 
   const value = useMemo(
-    () => ({ orders, addOrder, setStatus }),
-    [orders, addOrder, setStatus],
+    () => ({ orders, addOrder, setStatus, updateOrder }),
+    [orders, addOrder, setStatus, updateOrder],
   );
 
   return (
