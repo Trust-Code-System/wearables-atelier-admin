@@ -52,7 +52,7 @@ export const dashboardButtonVariants = cva(
 export type DashboardButtonProps = ComponentProps<"button"> & VariantProps<typeof dashboardButtonVariants>;
 
 export function DashboardButton({ variant, size, className, type = "button", ...props }: DashboardButtonProps) {
-  return <button type={type} className={cn(dashboardButtonVariants({ variant, size }), className)} {...props} />;
+  return <button type={type} className={cn(dashboardButtonVariants({ variant, size }), "admin-action-motion", className)} {...props} />;
 }
 
 // Menus and popovers portal to the body, outside the shell, so they carry the layer class that holds the palette.

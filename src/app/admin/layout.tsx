@@ -71,7 +71,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const { products } = useCatalog();
   const { orders } = useOrders();
   const { tab: storedTab, setTab, sort, setSort } = useAdminView();
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
 
   const onProductsIndex = pathname === "/admin/products";
   const onOrdersIndex = pathname === "/admin/orders";

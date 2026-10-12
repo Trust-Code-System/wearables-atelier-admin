@@ -1,52 +1,61 @@
-/* Admin palette follows the original ObsidianUI dashboard shell.
+/* Atelier olive and gold palette within the ObsidianUI dashboard shell.
    Root tokens also reach dialogs, selects and toasts rendered in portals.
    These selectors only apply while an admin route is mounted. */
 :root:has(.admin-ui),
 .admin-ui {
   --background: #ffffff;
-  --foreground: #161616;
-  --card: #fafafa;
-  --card-foreground: #161616;
+  --foreground: #20221e;
+  --card: #fafaf7;
+  --card-foreground: #20221e;
   --popover: #ffffff;
-  --popover-foreground: #161616;
-  --primary: #2563eb;
-  --primary-foreground: #f9fbff;
-  --secondary: #f4f4f4;
-  --secondary-foreground: #161616;
-  --muted: #efefef;
-  --muted-foreground: #737373;
-  --accent: #efefef;
-  --accent-foreground: #161616;
-  --border: #e7e7e7;
-  --input: #d6d6d6;
-  --ring: #8b8b8b;
-  --bronze: #2563eb;
-  --bronze-foreground: #f9fbff;
-  --chart-1: #2563eb;
+  --popover-foreground: #20221e;
+  --primary: #30372b;
+  --primary-foreground: #fafaf7;
+  --secondary: #eeefea;
+  --secondary-foreground: #20221e;
+  --muted: #eeefea;
+  --muted-foreground: #686c63;
+  --accent: #eeefea;
+  --accent-foreground: #20221e;
+  --border: #dedfd8;
+  --input: #c3c6bb;
+  --ring: #8a8d85;
+  --bronze: #566247;
+  --bronze-foreground: #fafaf7;
+  --chart-1: #566247;
+  --chart-2: #a17c22;
+  --chart-3: #8a8f6a;
+  --chart-4: #9b795b;
+  --chart-5: #71766b;
   --radius: 0.5rem;
 }
 
 :root:has(.admin-ui.dark),
 .admin-ui.dark {
-  --background: #161616;
-  --foreground: #f9fbff;
-  --card: #1b1b1b;
-  --card-foreground: #f9fbff;
-  --popover: #1e1e1e;
-  --popover-foreground: #f9fbff;
-  --primary: #2563eb;
-  --primary-foreground: #f9fbff;
-  --secondary: #242424;
-  --secondary-foreground: #f9fbff;
-  --muted: #2a2a2a;
-  --muted-foreground: #9a9a9a;
-  --accent: #2a2a2a;
-  --accent-foreground: #f9fbff;
-  --border: #303030;
-  --input: #393939;
-  --ring: #676767;
-  --bronze: #6094ff;
-  --chart-1: #6094ff;
+  --background: #181d16;
+  --foreground: #fafaf7;
+  --card: #20261d;
+  --card-foreground: #fafaf7;
+  --popover: #242b20;
+  --popover-foreground: #fafaf7;
+  --primary: #c6ad64;
+  --primary-foreground: #20221e;
+  --secondary: #2d3527;
+  --secondary-foreground: #fafaf7;
+  --muted: #30392a;
+  --muted-foreground: #b0b6a7;
+  --accent: #30392a;
+  --accent-foreground: #fafaf7;
+  --border: #3b4434;
+  --input: #4b5542;
+  --ring: #a7b094;
+  --bronze: #c6ad64;
+  --bronze-foreground: #20221e;
+  --chart-1: #c6ad64;
+  --chart-2: #a7b98d;
+  --chart-3: #d2c49e;
+  --chart-4: #ba9476;
+  --chart-5: #a0ad93;
   --destructive: #f97373;
 }
 

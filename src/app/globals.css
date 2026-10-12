@@ -226,6 +226,20 @@
 }
 
 @layer utilities {
+  .admin-value-motion { display: inline-grid; position: relative; }
+  .admin-value-motion > span { grid-area: 1 / 1; }
+  .admin-action-motion { transition: transform 180ms cubic-bezier(.25,1,.5,1), background-color 150ms, box-shadow 180ms; }
+  .admin-action-motion:active:not(:disabled) { transform: scale(.97); transition-duration: 80ms; }
+  [data-slot="select-trigger"] svg { transition: transform 200ms cubic-bezier(.25,1,.5,1); }
+  [data-slot="select-trigger"][data-popup-open] svg { transform: rotate(180deg); }
+  [data-slot="select-content"][data-open] { animation: admin-menu-enter 200ms cubic-bezier(.25,1,.5,1); }
+  @keyframes admin-menu-enter { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @media (hover:hover) and (pointer:fine) { .admin-action-motion:hover:not(:disabled) { transform: translateY(-1px); } }
+  @media (prefers-reduced-motion:reduce) {
+    .admin-action-motion, [data-slot="select-trigger"] svg { transition: none; }
+    .admin-action-motion:hover:not(:disabled), .admin-action-motion:active:not(:disabled) { transform: none; }
+    [data-slot="select-content"][data-open] { animation: none; }
+  }
   /* Serif display with optical sizing + tightened tracking */
   .font-display {
     font-family: var(--font-editorial), ui-serif, Georgia, serif;

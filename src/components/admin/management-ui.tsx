@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AnimatedValue, MetricSurface } from "./animated-value";
 import { SearchIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -76,16 +77,16 @@ export function MetricCards({
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <div
+        <MetricSurface
           key={item.label}
           className="admin-stat rounded-xl border bg-card p-5"
         >
           <p className="text-xs text-muted-foreground">{item.label}</p>
           <p className="admin-stat-value mt-3 font-semibold tabular-nums">
-            {item.value}
+            <AnimatedValue value={item.value} />
           </p>
           <p className="mt-2 text-xs text-muted-foreground">{item.hint}</p>
-        </div>
+        </MetricSurface>
       ))}
     </div>
   );

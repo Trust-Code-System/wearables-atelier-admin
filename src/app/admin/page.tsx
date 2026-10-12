@@ -6,6 +6,7 @@ import { useCatalog, useCurrency, useOrders } from "@/lib/store";
 import { formatPrice, formatDate } from "@/lib/format";
 import { isRecognizedSale } from "@/lib/admin-data";
 import { RevenueChart } from "@/components/admin/revenue-chart";
+import { AnimatedValue, MetricSurface } from "@/components/admin/animated-value";
 import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,7 +90,7 @@ export default function AdminOverview() {
       <StaggerGroup className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StaggerItem key={stat.label}>
-            <div className="admin-stat flex h-full min-w-0 flex-col gap-5 rounded-xl border bg-card p-5">
+            <MetricSurface className="admin-stat flex h-full min-w-0 flex-col gap-5 rounded-xl border bg-card p-5">
               <div className="flex items-center justify-between">
                 <p className="text-[0.8125rem] text-muted-foreground">{stat.label}</p>
                 <span className="grid size-8 place-items-center rounded-lg bg-secondary">
@@ -97,10 +98,10 @@ export default function AdminOverview() {
                 </span>
               </div>
               <div>
-                <p className="admin-stat-value font-display tracking-tight tabular-nums">{stat.value}</p>
+                <p className="admin-stat-value font-display tracking-tight tabular-nums"><AnimatedValue value={stat.value} /></p>
                 <p className="mt-1 text-[0.75rem] text-muted-foreground">{stat.hint}</p>
               </div>
-            </div>
+            </MetricSurface>
           </StaggerItem>
         ))}
       </StaggerGroup>
