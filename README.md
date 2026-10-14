@@ -14,6 +14,7 @@ Use Node.js 22 LTS or newer:
 
 ```sh
 npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
@@ -31,6 +32,24 @@ NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3100
 
 For deployment use the storefront's actual HTTPS address. This value is public and inlined during the build; rebuild when changing it. Dashboard and search links use this address to open the other app. It must be an HTTP/HTTPS URL.
 
+## Backend configuration
+
+Both apps use the same public backend setting:
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=https://api.staging.wearables.trustcodesystem.tech
+```
+
+Keep `.env.local` at the project root and out of Git. `.env.example` includes both this staging address and the local storefront-link setting. Preserve `NEXT_PUBLIC_STOREFRONT_URL` when updating your environment file.
+
+Future API code can import `getApiBaseUrl` from `@/lib/api-config` and append the backend's confirmed endpoint path. The helper validates the setting and removes trailing slashes; it makes no network requests. No API prefix, authentication scheme or endpoint contract is assumed.
+
+Set `NEXT_PUBLIC_API_BASE_URL` in this Vercel project's **Production**, **Preview** and **Development** environments for now, matching the storefront project. This value is public and inlined at build time: restart local development after changes and rebuild/redeploy hosted apps when changing it. Replace the Production value when the production backend is available. Never use `NEXT_PUBLIC_` variables for tokens or API keys.
+
+Configured in both projects under the `hello-76386237s-projects` Vercel workspace on 14 October 2026, for all three environments. Existing deployments need a new build to receive the setting.
+
+This prepares configuration only. Demo data, browser storage and admin workflows remain unchanged until API integration. Backend CORS and admin authentication must be configured when those integrations start.
+
 ## Structure
 
 - `src/app/admin` — overview, products, inventory, customers, analytics, order management and settings.
@@ -38,6 +57,7 @@ For deployment use the storefront's actual HTTPS address. This value is public a
 - `src/components/block/dashboard-shell.*` — ObsidianUI shell.
 - `src/lib/store.tsx` — prototype catalog, order and settings stores.
 - `src/lib/storefront-url.ts` — external customer-app links.
+- `src/lib/api-config.ts` — validated public base URL for future API integration.
 - `public/brand` and `public/collection` — independent copies of brand assets.
 
 Next.js 16.4, React 19, Tailwind 4, Base UI, Radix, Duo Icons, Motion and Recharts. Each dependency and asset belongs to this repository; there is no parent workspace or sibling-folder runtime dependency. Inter/Geist fonts are fetched during a clean build.
