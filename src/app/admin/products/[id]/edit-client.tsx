@@ -1,15 +1,24 @@
 "use client";
-
 import Link from "next/link";
-import { useCatalog } from "@/lib/store";
+import { useAdminCatalog } from "@/lib/admin-catalog";
 import { ProductForm } from "../product-form";
 import { Button } from "@/components/ui/button";
-
 export function EditProductClient({ id }: { id: string }) {
-  const { products } = useCatalog();
-  const product = products.find((p) => p.id === id);
-
-  if (!product) {
+  const { products, loading, error } = useAdminCatalog();
+  const product = products.find((entry) => entry.id === id);
+  if (loading)
+    return (
+      <p role="status" className="p-6 text-sm text-muted-foreground">
+        Loading product…
+      </p>
+    );
+  if (error)
+    return (
+      <div className="space-y-4 p-6">
+        <p role="alert">{error.message}</p>
+      </div>
+    );
+  if (!product)
     return (
       <div className="flex flex-col items-center gap-4 py-32 text-center">
         <p className="font-display text-2xl">Product not found</p>
@@ -19,15 +28,14 @@ export function EditProductClient({ id }: { id: string }) {
         <Button render={<Link href="/admin/products" />}>All products</Button>
       </div>
     );
-  }
-
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6">
       <p className="text-[0.8125rem] text-muted-foreground">
-        <span className="font-medium text-foreground">{product.name}</span> — changes go
-        live on the storefront as soon as you save.
+        <span className="font-medium text-foreground">{product.name}</span> ·{" "}
+        {product.backend.status.toLowerCase()}. Edit product details, prices,
+        stock and images below.
       </p>
-      <ProductForm existing={product} />
+      <ProductForm key={product.id} existing={product} />
     </div>
   );
 }
