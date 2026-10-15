@@ -14,7 +14,8 @@ import {
   ChartNoAxesCombinedIcon,
   Settings2Icon,
 } from "lucide-react";
-import { useCatalog, useOrders } from "@/lib/store";
+import { useOrders } from "@/lib/store";
+import { useAdminCatalog as useCatalog } from "@/lib/admin-catalog";
 import { storefrontHref } from "@/lib/storefront-url";
 import {
   CommandDialog,

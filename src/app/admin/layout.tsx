@@ -19,7 +19,8 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useCatalog, useOrders } from "@/lib/store";
+import { useOrders } from "@/lib/store";
+import { AdminCatalogProvider, useAdminCatalog as useCatalog } from "@/lib/admin-catalog";
 import { storefrontHref } from "@/lib/storefront-url";
 import { downloadCsv } from "@/lib/export-csv";
 import { customersFromOrders, stockLevel } from "@/lib/admin-data";
@@ -59,7 +60,7 @@ const PRODUCT_TABS = ["all", "clothing", "jewelry"];
 const ORDER_TABS = ["all", "pending", "paid", "fulfilled", "cancelled"];
 
 function exportProductsCsv(products: ReturnType<typeof useCatalog>["products"]) {
-  downloadCsv("wearables-atelier-products.csv", [["id", "name", "category", "price_ngn", "compare_at_ngn", "stock", "sizes", "badge"], ...products.map((p) => [p.id, p.name, p.category, p.priceNGN, p.compareAtNGN ?? "", p.stock, p.sizes.join(" ") || "one-size", p.badge ?? ""])]);
+  downloadCsv("wearables-atelier-products.csv", [["id", "name", "category", "size", "sku", "price_kobo", "compare_at_kobo", "status"], ...products.flatMap((product) => product.backend.variants.map((variant) => [product.id, product.name, product.category, variant.sizeLabel, variant.sku, variant.priceKobo, variant.compareAtPriceKobo ?? "", product.backend.status]))]);
   toast.success("Catalog exported", {
     description: `${products.length} products saved as CSV.`,
   });
@@ -114,7 +115,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               href: "/admin/orders",
               count: pendingCount > 0 ? pendingCount : undefined,
             },
-            { id: "inventory", label: "Inventory", icon: PackageCheckIcon, href: "/admin/inventory", count: products.filter((p) => stockLevel(p.stock) !== "healthy").length || undefined },
+            { id: "inventory", label: "Inventory", icon: PackageCheckIcon, href: "/admin/inventory", count: products.filter((product) => stockLevel(product.stock) !== "healthy").length || undefined },
             { id: "customers", label: "Customers", icon: UsersIcon, href: "/admin/customers", count: customersFromOrders(orders).length || undefined },
             { id: "analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon, href: "/admin/analytics" },
             { id: "settings", label: "Settings", icon: Settings2Icon, href: "/admin/settings" },
@@ -130,7 +131,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         },
       ]}
       title={titleFor(pathname)}
-      status="Prototype"
+      status={pathname.startsWith("/admin/products") ? "Catalog" : "Prototype"}
       statusTone="neutral"
       headerActions={
         <>
@@ -206,8 +207,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AdminViewProvider>
+    <AdminCatalogProvider><AdminViewProvider>
       <AdminShell>{children}</AdminShell>
-    </AdminViewProvider>
+    </AdminViewProvider></AdminCatalogProvider>
   );
 }

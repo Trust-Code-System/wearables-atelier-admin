@@ -2,18 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DownloadIcon,
   PackageCheckIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useCatalog, useCurrency } from "@/lib/store";
-import { formatDate, formatPrice } from "@/lib/format";
+import { useAdminCatalog, type AdminProduct } from "@/lib/admin-catalog";
+import { api, updateProduct, displayKobo, ApiError } from "@/lib/catalog-api";
+import { CatalogSignIn } from "../products/catalog-sign-in";
+import { formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/export-csv";
 import { LOW_STOCK_THRESHOLD, stockLevel, validStock } from "@/lib/admin-data";
-import type { Product } from "@/lib/types";
 import {
   EmptyResults,
   ManagementFilter,
@@ -55,11 +56,43 @@ const REASONS = [
 ];
 
 export default function InventoryPage() {
-  const { products, stockHistory, adjustStock } = useCatalog();
-  const { currency } = useCurrency();
+  const { products, loading, error: catalogError, refresh } = useAdminCatalog();
+  const [stockHistory, setStockHistory] = useState<
+    {
+      id: string;
+      productName: string;
+      sizeLabel: string;
+      before: number;
+      after: number;
+      reason: string;
+      createdAt: string;
+    }[]
+  >([]);
+  const [historyError, setHistoryError] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    api<{ data: typeof stockHistory }>("/api/v1/admin/inventory/movements", {
+      signal: controller.signal,
+    })
+      .then((result) => {
+        setStockHistory(result.data);
+        setHistoryError("");
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted)
+          setHistoryError(
+            cause instanceof Error
+              ? cause.message
+              : "Could not load stock history",
+          );
+      });
+    return () => controller.abort();
+  }, [products]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState<Product | null>(null);
+  const [selected, setSelected] = useState<AdminProduct | null>(null);
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("Restock");
   const [error, setError] = useState("");
@@ -72,10 +105,19 @@ export default function InventoryPage() {
           .includes(query.trim().toLowerCase()),
     )
     .sort((a, b) => a.stock - b.stock);
-  const totalUnits = products.reduce((sum, p) => sum + p.stock, 0);
-  const openAdjustment = (product: Product) => {
+  const totalUnits = products.reduce(
+    (sum, product) =>
+      sum +
+      product.backend.variants
+        .filter((variant) => !variant.archivedAt)
+        .reduce((units, variant) => units + variant.onHand, 0),
+    0,
+  );
+  const openAdjustment = (product: AdminProduct) => {
     setSelected(product);
-    setQuantity(String(product.stock));
+    const variant = product.backend.variants.find((entry) => !entry.archivedAt);
+    setSelectedSize(variant?.sizeLabel ?? "");
+    setQuantity(String(variant?.onHand ?? 0));
     setReason("Restock");
     setError("");
   };
@@ -101,9 +143,22 @@ export default function InventoryPage() {
           },
           {
             label: "Retail stock value",
-            value: formatPrice(
-              products.reduce((sum, p) => sum + p.priceNGN * p.stock, 0),
-              currency,
+            value: displayKobo(
+              products
+                .reduce(
+                  (total, product) =>
+                    total +
+                    product.backend.variants
+                      .filter((variant) => !variant.archivedAt)
+                      .reduce(
+                        (sum, variant) =>
+                          sum +
+                          BigInt(variant.priceKobo) * BigInt(variant.onHand),
+                        BigInt(0),
+                      ),
+                  BigInt(0),
+                )
+                .toString(),
             ),
             hint: "At current selling prices",
           },
@@ -139,7 +194,17 @@ export default function InventoryPage() {
                 p.category,
                 p.stock,
                 stockLevel(p.stock),
-                p.stock * p.priceNGN,
+                displayKobo(
+                  p.backend.variants
+                    .filter((variant) => !variant.archivedAt)
+                    .reduce(
+                      (sum, variant) =>
+                        sum +
+                        BigInt(variant.priceKobo) * BigInt(variant.onHand),
+                      BigInt(0),
+                    )
+                    .toString(),
+                ),
               ]),
             ])
           }
@@ -149,10 +214,20 @@ export default function InventoryPage() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {visible.length} products · Quantities are totals across sizes. Changes
-        stay in this admin browser.
+        {visible.length} products · Quantities are totals across sizes.
+        Adjustments are saved per size in the backend.
       </p>
-      {!visible.length ? (
+      {loading ? (
+        <p role="status">Loading inventory…</p>
+      ) : catalogError ? (
+        <div>
+          <p role="alert">{catalogError.message}</p>
+          {catalogError instanceof ApiError &&
+            [401, 403].includes(catalogError.status) && (
+              <CatalogSignIn onSuccess={() => void refresh()} />
+            )}
+        </div>
+      ) : !visible.length ? (
         <EmptyResults>
           No matching products. Try another search or stock filter.
         </EmptyResults>
@@ -180,7 +255,7 @@ export default function InventoryPage() {
                             fill
                             sizes="40px"
                             className="object-cover"
-                            unoptimized={product.images[0].startsWith("data:")}
+                            unoptimized
                           />
                         )}
                       </div>
@@ -215,7 +290,9 @@ export default function InventoryPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {product.stock}
+                    {product.backend.variants
+                      .filter((variant) => !variant.archivedAt)
+                      .reduce((sum, variant) => sum + variant.onHand, 0)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -243,10 +320,14 @@ export default function InventoryPage() {
           Recent stock adjustments
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Latest 100 inventory adjustments. Product edits and order statuses do
-          not automatically change this log or stock.
+          Latest 100 stock changes, including adjustments made in the product
+          editor.
         </p>
-        {!stockHistory.length ? (
+        {historyError ? (
+          <p role="alert" className="py-4 text-sm text-destructive">
+            {historyError}
+          </p>
+        ) : !stockHistory.length ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             Your first adjustment will appear here with its reason and quantity
             change.
@@ -259,7 +340,9 @@ export default function InventoryPage() {
                 className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
               >
                 <div>
-                  <p className="font-medium">{entry.productName}</p>
+                  <p className="font-medium">
+                    {entry.productName} · size {entry.sizeLabel}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {entry.reason} · {formatDate(entry.createdAt)}
                   </p>
@@ -280,7 +363,7 @@ export default function InventoryPage() {
       </section>
       <Dialog
         open={!!selected}
-        onOpenChange={(open) => !open && setSelected(null)}
+        onOpenChange={(open) => !open && !busy && setSelected(null)}
       >
         <DialogContent>
           <DialogHeader>
@@ -291,34 +374,92 @@ export default function InventoryPage() {
           </DialogHeader>
           <form
             className="flex flex-col gap-4"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
+              if (busy) return;
               const next = Number(quantity);
-              if (!quantity.trim() || !validStock(next)) {
-                setError("Enter a whole number of units, zero or greater.");
+              if (!quantity.trim() || !validStock(next) || next > 1_000_000) {
+                setError("Enter a whole number of units from 0 to 1,000,000.");
                 return;
               }
-              if (next === selected?.stock) {
-                setError("Change the quantity before saving.");
+              if (!selected) return;
+              const variant = selected.backend.variants.find(
+                (entry) =>
+                  entry.sizeLabel === selectedSize && !entry.archivedAt,
+              );
+              if (!variant) {
+                setError("Select a size");
                 return;
               }
-              if (
-                !selected ||
-                !adjustStock(selected.id, selected.stock, next, reason)
-              ) {
+              if (next === variant.onHand) {
+                setError("Change the quantity before saving");
+                return;
+              }
+              setBusy(true);
+              try {
+                const product = selected.backend;
+                await updateProduct(product.id, {
+                  name: product.name,
+                  slug: product.slug,
+                  category: product.category,
+                  description: product.description,
+                  careDetails: product.careDetails,
+                  ...(product.badge ? { badge: product.badge } : {}),
+                  expectedUpdatedAt: product.updatedAt,
+                  stockReason: reason,
+                  variants: product.variants
+                    .filter((entry) => !entry.archivedAt)
+                    .map((entry) => ({
+                      sku: entry.sku,
+                      sizeLabel: entry.sizeLabel,
+                      priceKobo: entry.priceKobo,
+                      ...(entry.compareAtPriceKobo
+                        ? { compareAtPriceKobo: entry.compareAtPriceKobo }
+                        : {}),
+                      onHand: entry.id === variant.id ? next : entry.onHand,
+                    })),
+                });
+                await refresh();
+                toast.success("Stock updated", {
+                  description: `${selected.name}, size ${selectedSize}: ${variant.onHand} → ${next}`,
+                });
+                setSelected(null);
+              } catch (cause) {
                 setError(
-                  "The product changed. Close this window and open it again to use the latest stock.",
+                  cause instanceof Error
+                    ? cause.message
+                    : "Could not adjust stock",
                 );
-                return;
+              } finally {
+                setBusy(false);
               }
-              toast.success("Stock updated", {
-                description: `${selected.name}: ${selected.stock} → ${next} units`,
-              });
-              setSelected(null);
             }}
           >
+            <ManagementFilter
+              label="Size"
+              value={selectedSize}
+              options={(selected?.backend.variants ?? [])
+                .filter((variant) => !variant.archivedAt)
+                .map((variant) => ({
+                  value: variant.sizeLabel,
+                  label: `Size ${variant.sizeLabel}`,
+                }))}
+              onChange={(size) => {
+                setSelectedSize(size);
+                setQuantity(
+                  String(
+                    selected?.backend.variants.find(
+                      (variant) => variant.sizeLabel === size,
+                    )?.onHand ?? 0,
+                  ),
+                );
+                setError("");
+              }}
+            />
             <div className="flex flex-col gap-2">
-              <Label htmlFor="stock-quantity">New total quantity</Label>
+              <Label htmlFor="stock-quantity">
+                New on-hand quantity for this size
+              </Label>
               <Input
                 id="stock-quantity"
                 type="number"
@@ -360,7 +501,9 @@ export default function InventoryPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit">Save adjustment</Button>
+              <Button type="submit" disabled={busy}>
+                {busy ? "Saving…" : "Save adjustment"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
