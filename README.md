@@ -70,10 +70,16 @@ The owner chose to split the projects now and connect a shared backend next. Adm
 
 Inventory includes stock-level filters, total quantities, retail valuation, adjustments with reasons and a recent history. Customers are grouped from order contacts with purchase histories, not authenticated customer accounts. Orders support search, status filters, internal notes and courier/tracking details. Analytics uses paid and fulfilled orders only, with date filters and CSV exports. See [admin workflows](docs/admin-workflows.md) for behavior and limitations.
 
-Authentication is not implemented. Keep any prototype preview under the hosting provider's access controls; admin authentication, shared database/API, migration and server-only payment configuration belong to the next phase. The noindex metadata discourages indexing but is not authentication.
+Administrator authentication is implemented at `/login`. All `/admin` pages require a current Better Auth session with the existing `admin` role. The server verifies sessions before rendering the portal, the client checks navigation/session expiry, and backend guards independently authorize every protected API request. Sign out is available in the header. Customer accounts cannot enter the portal.
+
+Products, images and inventory use the backend API. Other demo workflows described above remain prototypes. The storefront is a separate integration.
+
+To create a local or staging admin, configure backend `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` (12+ characters) and `ADMIN_SEED_NAME`, then run the backend's explicit `pnpm seed:admin` command after building and applying migrations. See the backend repository's `docs/admin-access.md` for staging instructions and refusal rules. This does not implement owner/staff invitations.
+
+For hosted login, use `https://admin.wearables.trustcodesystem.tech/login`, set this project's `NEXT_PUBLIC_API_BASE_URL` to the configured HTTPS API origin, and configure backend `COOKIE_DOMAIN=wearables.trustcodesystem.tech` with the admin origin allowed in CORS/trusted origins. The `vercel.app` alias cannot receive that shared parent-domain cookie. Locally use `localhost` for both apps with backend `COOKIE_DOMAIN` empty.
 
 ## Deploy independently
 
 Import **this repository** into its own Vercel or Next.js/Node.js hosting project. Use repository root `.`, install with `npm ci`, build with `npm run build`, and set `NEXT_PUBLIC_STOREFRONT_URL` in the build environment. Import the storefront repository as a separate hosting project. GitHub Pages cannot run these dynamic Next.js routes.
 
-The source repository is public at the owner's request. This app is deployed as its own Vercel project under Trustcode System, with Git integration on `main`. The production and preview environments set `NEXT_PUBLIC_STOREFRONT_URL=https://wearables-atelier-storefront.vercel.app`. These deployments retain the prototype data/authentication boundary described above.
+The source repository is public at the owner's request. This app is deployed as its own Vercel project under Trustcode System, with Git integration on `main`. The production and preview environments set `NEXT_PUBLIC_STOREFRONT_URL=https://wearables-atelier-storefront.vercel.app`. Deploy the backend changes before this admin integration, including its migrations and environment configuration.

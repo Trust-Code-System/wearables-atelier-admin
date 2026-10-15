@@ -1,12 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useAdminCatalog } from "@/lib/admin-catalog";
-import { ApiError } from "@/lib/catalog-api";
-import { CatalogSignIn } from "../catalog-sign-in";
 import { ProductForm } from "../product-form";
 import { Button } from "@/components/ui/button";
 export function EditProductClient({ id }: { id: string }) {
-  const { products, loading, error, refresh } = useAdminCatalog();
+  const { products, loading, error } = useAdminCatalog();
   const product = products.find((entry) => entry.id === id);
   if (loading)
     return (
@@ -18,9 +16,6 @@ export function EditProductClient({ id }: { id: string }) {
     return (
       <div className="space-y-4 p-6">
         <p role="alert">{error.message}</p>
-        {error instanceof ApiError && [401, 403].includes(error.status) && (
-          <CatalogSignIn onSuccess={() => void refresh()} />
-        )}
       </div>
     );
   if (!product)

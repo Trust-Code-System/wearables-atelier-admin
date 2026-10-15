@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminCatalog, type AdminProduct } from "@/lib/admin-catalog";
-import { api, updateProduct, displayKobo, ApiError } from "@/lib/catalog-api";
-import { CatalogSignIn } from "../products/catalog-sign-in";
+import { api, updateProduct, displayKobo } from "@/lib/catalog-api";
 import { formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/export-csv";
 import { LOW_STOCK_THRESHOLD, stockLevel, validStock } from "@/lib/admin-data";
@@ -222,10 +221,6 @@ export default function InventoryPage() {
       ) : catalogError ? (
         <div>
           <p role="alert">{catalogError.message}</p>
-          {catalogError instanceof ApiError &&
-            [401, 403].includes(catalogError.status) && (
-              <CatalogSignIn onSuccess={() => void refresh()} />
-            )}
         </div>
       ) : !visible.length ? (
         <EmptyResults>

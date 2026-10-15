@@ -70,6 +70,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
   if (!response.ok) {
+    if (typeof window !== "undefined" && [401, 403].includes(response.status))
+      window.dispatchEvent(new Event("wearables:session-invalid"));
     if (response.status === 401)
       throw new ApiError(
         "Sign in with your administrator account, then try again.",

@@ -14,8 +14,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useAdminCatalog } from "@/lib/admin-catalog";
-import { ApiError, displayKobo } from "@/lib/catalog-api";
-import { CatalogSignIn } from "./catalog-sign-in";
+import { displayKobo } from "@/lib/catalog-api";
 import { useAdminView } from "@/components/admin/admin-view-context";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
@@ -146,9 +145,6 @@ export default function AdminProducts() {
           <p role="alert" className="text-sm text-destructive">
             {error.message}
           </p>
-          {error instanceof ApiError && [401, 403].includes(error.status) && (
-            <CatalogSignIn onSuccess={() => void refresh()} />
-          )}
         </div>
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed py-24 text-center">
