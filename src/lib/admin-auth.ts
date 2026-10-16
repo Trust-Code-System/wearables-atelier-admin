@@ -13,7 +13,10 @@ export function isAdminSession(value: unknown): boolean {
     user &&
     typeof user === "object" &&
     "role" in user &&
-    user.role === "admin" &&
+    (user.role === "admin" ||
+      (user.role === "owner" &&
+        "emailVerified" in user &&
+        user.emailVerified === true)) &&
     session &&
     typeof session === "object" &&
     "expiresAt" in session &&
