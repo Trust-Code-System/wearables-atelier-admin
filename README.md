@@ -6,7 +6,7 @@ Separate admin console for catalog management, inventory, customers, orders, sal
 
 Source: [wearables-atelier-admin](https://github.com/Trust-Code-System/wearables-atelier-admin). Customer app: [wearables-atelier-storefront](https://github.com/Trust-Code-System/wearables-atelier-storefront).
 
-Live admin: [wearables-atelier-admin.vercel.app/admin](https://wearables-atelier-admin.vercel.app/admin). Live customer site: [wearables-atelier-storefront.vercel.app](https://wearables-atelier-storefront.vercel.app).
+Admin domain: [admin.wearablesbyashabi.store/admin](https://admin.wearablesbyashabi.store/admin). Customer site: [wearablesbyashabi.store](https://wearablesbyashabi.store). Connected to the Vercel projects on 17 October 2026; DNS propagation and the backend cookie/CORS cutover must finish before full operation. See [domain cutover](docs/domain-cutover.md). The [previous admin address](https://admin.wearables.trustcodesystem.tech/admin) remains assigned during the transition.
 
 ## Run locally
 
@@ -84,4 +84,4 @@ For hosted login, use `https://admin.wearables.trustcodesystem.tech/login`, set 
 
 Import **this repository** into its own Vercel or Next.js/Node.js hosting project. Use repository root `.`, install with `npm ci`, build with `npm run build`, and set `NEXT_PUBLIC_STOREFRONT_URL` in the build environment. Import the storefront repository as a separate hosting project. GitHub Pages cannot run these dynamic Next.js routes.
 
-The source repository is public at the owner's request. This app is deployed as its own Vercel project under Trustcode System, with Git integration on `main`. The production and preview environments set `NEXT_PUBLIC_STOREFRONT_URL=https://wearables-atelier-storefront.vercel.app`. Deploy the backend changes before this admin integration, including its migrations and environment configuration.
+The source repository is public at the owner's request. This app is deployed as its own Vercel project under Trustcode System, with Git integration on `main`. The production and preview environments set `NEXT_PUBLIC_STOREFRONT_URL=https://wearablesbyashabi.store`. The backend URL remains the existing staging service until its Railway owner completes the domain cutover in `docs/domain-cutover.md`. Deploy the backend changes before this admin integration, including its migrations and environment configuration.
