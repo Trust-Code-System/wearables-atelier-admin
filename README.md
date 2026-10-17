@@ -6,7 +6,7 @@ Separate admin console for catalog management, inventory, customers, orders, sal
 
 Source: [wearables-atelier-admin](https://github.com/Trust-Code-System/wearables-atelier-admin). Customer app: [wearables-atelier-storefront](https://github.com/Trust-Code-System/wearables-atelier-storefront).
 
-Admin domain: [admin.wearablesbyashabi.store/admin](https://admin.wearablesbyashabi.store/admin). Customer site: [wearablesbyashabi.store](https://wearablesbyashabi.store). Connected to the Vercel projects on 17 October 2026; DNS propagation and the backend cookie/CORS cutover must finish before full operation. See [domain cutover](docs/domain-cutover.md). The [previous admin address](https://admin.wearables.trustcodesystem.tech/admin) remains assigned during the transition.
+Admin domain: [admin.wearablesbyashabi.store/admin](https://admin.wearablesbyashabi.store/admin). Customer site: [wearablesbyashabi.store](https://wearablesbyashabi.store). Connected to the Vercel projects with HTTPS verified on 17 October 2026. Backend cookie/CORS changes still require the Railway owner before login on the new admin domain can work; see [domain cutover](docs/domain-cutover.md). The [previous admin address](https://admin.wearables.trustcodesystem.tech/admin) remains assigned during the transition.
 
 ## Run locally
 
