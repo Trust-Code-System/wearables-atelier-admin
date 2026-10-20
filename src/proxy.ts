@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export function proxy(request: NextRequest) {
   const next = request.nextUrl.pathname + request.nextUrl.search;
   if (
-    !request.cookies.get("better-auth.session_token")?.value &&
-    !request.cookies.get("__Secure-better-auth.session_token")?.value
+    !request.cookies.get("wearables-admin.session_token")?.value &&
+    !request.cookies.get("__Secure-wearables-admin.session_token")?.value
   ) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", next);

@@ -2,7 +2,7 @@
 
 import { SignOutButton } from "@/components/admin/sign-out-button";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useTheme } from "next-themes";
 import Image from "next/image";
 import { AppDots, Box } from "@duo-icons/react";
 import {
@@ -110,7 +110,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const { products } = useCatalog();
   const { data: report, owner } = useAdminReport();
   const { tab: storedTab, setTab, sort, setSort } = useAdminView();
-  const [dark, setDark] = useState(false);
+  const { setTheme } = useTheme();
 
   const onProductsIndex = pathname === "/admin/products";
   const onOrdersIndex = pathname === "/admin/orders";
@@ -127,7 +127,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         : pathname.split("/")[2] || "overview";
 
   return (
-    <div className={`admin-ui h-dvh ${dark ? "dark" : ""}`} data-lenis-prevent>
+    <div className="admin-ui h-dvh" data-lenis-prevent>
       <DashboardShell
         brand={{
           name: "Wearables Atelier",
@@ -238,10 +238,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             <DashboardButton
               variant="secondary"
               size="icon"
-              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              onClick={() => setDark((value) => !value)}
+              aria-label="Toggle dark mode"
+              onClick={() =>
+                setTheme((current) => (current === "dark" ? "light" : "dark"))
+              }
             >
-              {dark ? <SunIcon aria-hidden /> : <MoonIcon aria-hidden />}
+              <SunIcon aria-hidden className="hidden dark:block" />
+              <MoonIcon aria-hidden className="dark:hidden" />
             </DashboardButton>
             <SignOutButton />
             <AdminSearch
