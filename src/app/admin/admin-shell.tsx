@@ -20,11 +20,14 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useOrders } from "@/lib/store";
-import { AdminCatalogProvider, useAdminCatalog as useCatalog } from "@/lib/admin-catalog";
+import { AdminReportsProvider, useAdminReport } from "@/lib/admin-resource";
+import {
+  AdminCatalogProvider,
+  useAdminCatalog as useCatalog,
+} from "@/lib/admin-catalog";
 import { storefrontHref } from "@/lib/storefront-url";
 import { downloadCsv } from "@/lib/export-csv";
-import { customersFromOrders, stockLevel } from "@/lib/admin-data";
+import { stockLevel } from "@/lib/admin-data";
 import { AdminSearch } from "@/components/admin/admin-search";
 import {
   AdminViewProvider,
@@ -58,10 +61,44 @@ function titleFor(pathname: string): string {
 }
 
 const PRODUCT_TABS = ["all", "clothing", "jewelry"];
-const ORDER_TABS = ["all", "pending", "paid", "fulfilled", "cancelled"];
+const ORDER_TABS = [
+  "all",
+  "pending",
+  "paid",
+  "fulfilled",
+  "cancelled",
+  "attention",
+  "failed",
+  "refunded",
+];
 
-function exportProductsCsv(products: ReturnType<typeof useCatalog>["products"]) {
-  downloadCsv("wearables-atelier-products.csv", [["id", "name", "category", "size", "sku", "price_kobo", "compare_at_kobo", "status"], ...products.flatMap((product) => product.backend.variants.map((variant) => [product.id, product.name, product.category, variant.sizeLabel, variant.sku, variant.priceKobo, variant.compareAtPriceKobo ?? "", product.backend.status]))]);
+function exportProductsCsv(
+  products: ReturnType<typeof useCatalog>["products"],
+) {
+  downloadCsv("wearables-atelier-products.csv", [
+    [
+      "id",
+      "name",
+      "category",
+      "size",
+      "sku",
+      "price_kobo",
+      "compare_at_kobo",
+      "status",
+    ],
+    ...products.flatMap((product) =>
+      product.backend.variants.map((variant) => [
+        product.id,
+        product.name,
+        product.category,
+        variant.sizeLabel,
+        variant.sku,
+        variant.priceKobo,
+        variant.compareAtPriceKobo ?? "",
+        product.backend.status,
+      ]),
+    ),
+  ]);
   toast.success("Catalog exported", {
     description: `${products.length} products saved as CSV.`,
   });
@@ -71,146 +108,228 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { products } = useCatalog();
-  const { orders } = useOrders();
+  const { data: report, owner } = useAdminReport();
   const { tab: storedTab, setTab, sort, setSort } = useAdminView();
   const [dark, setDark] = useState(false);
 
   const onProductsIndex = pathname === "/admin/products";
   const onOrdersIndex = pathname === "/admin/orders";
-  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const pendingCount = report?.current.pendingOrders ?? 0;
 
   const tab = (onProductsIndex ? PRODUCT_TABS : ORDER_TABS).includes(storedTab)
     ? storedTab
     : "all";
-  const activeItemId = pathname === "/admin"
-    ? "overview"
-    : pathname.startsWith("/admin/products")
-      ? "products"
-      : pathname.split("/")[2] || "overview";
+  const activeItemId =
+    pathname === "/admin"
+      ? "overview"
+      : pathname.startsWith("/admin/products")
+        ? "products"
+        : pathname.split("/")[2] || "overview";
 
   return (
     <div className={`admin-ui h-dvh ${dark ? "dark" : ""}`} data-lenis-prevent>
-    <DashboardShell
-      brand={{
-        name: "Wearables Atelier",
-        description: "Admin portal",
-        logo: <span className="grid h-9 w-16 shrink-0 place-items-center rounded-lg bg-[#242920] px-1"><Image src="/brand/wearables-by-ashabi.png" alt="Wearables by Ashabi" width={844} height={351} sizes="56px" className="h-auto w-14" /></span>,
-      }}
-      activeItemId={activeItemId}
-      navigation={[
-        {
-          id: "manage",
-          items: [
-            { id: "overview", label: "Overview", icon: AppDots, href: "/admin" },
-            {
-              id: "products",
-              label: "Products",
-              icon: Box,
-              href: "/admin/products",
-              count: products.length,
-            },
-            {
-              id: "orders",
-              label: "Orders",
-              icon: ReceiptTextIcon,
-              href: "/admin/orders",
-              count: pendingCount > 0 ? pendingCount : undefined,
-            },
-            { id: "inventory", label: "Inventory", icon: PackageCheckIcon, href: "/admin/inventory", count: products.filter((product) => stockLevel(product.stock) !== "healthy").length || undefined },
-            { id: "customers", label: "Customers", icon: UsersIcon, href: "/admin/customers", count: customersFromOrders(orders).length || undefined },
-            { id: "analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon, href: "/admin/analytics" },
-            { id: "settings", label: "Settings", icon: Settings2Icon, href: "/admin/settings" },
-          ],
-        },
-        {
-          id: "storefront",
-          title: "Storefront",
-          items: [
-            { id: "store", label: "View store", icon: AppWindowIcon, href: storefrontHref(), color: "#b3855a" },
-            { id: "shop", label: "Shop page", icon: ShoppingBagIcon, href: storefrontHref("/shop"), color: "#8a8f6a" },
-          ],
-        },
-      ]}
-      title={titleFor(pathname)}
-      status={pathname.startsWith("/admin/products") ? "Catalog" : "Prototype"}
-      statusTone="neutral"
-      headerActions={
-        <>
-        <DashboardButton variant="secondary" size="icon" aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setDark((value) => !value)}>
-          {dark ? <SunIcon aria-hidden /> : <MoonIcon aria-hidden />}
-        </DashboardButton>
-        <SignOutButton />
-        <AdminSearch
-          trigger={
-            <DashboardButton variant="secondary" size="icon" aria-label="Search products and orders (Ctrl+K)">
-              <SearchIcon aria-hidden />
-            </DashboardButton>
-          }
-        />
-        </>
-      }
-      tabs={
-        onProductsIndex
-          ? [
-              { value: "all", label: "All products" },
-              { value: "clothing", label: "Clothing" },
-              { value: "jewelry", label: "Jewelry" },
-            ]
-          : onOrdersIndex
-            ? [
-                { value: "all", label: "All" },
-                { value: "pending", label: "Pending" },
-                { value: "paid", label: "Paid" },
-                { value: "fulfilled", label: "Fulfilled" },
-                { value: "cancelled", label: "Cancelled" },
-              ]
-            : undefined
-      }
-      tab={onProductsIndex || onOrdersIndex ? tab : undefined}
-      onTabChange={onProductsIndex || onOrdersIndex ? setTab : undefined}
-      filters={
-        onProductsIndex ? (
-          <DashboardFilterMenu
-            label="Sort by"
-            value={sort}
-            options={SORT_OPTIONS}
-            onValueChange={setSort}
-          />
-        ) : undefined
-      }
-      toolbarActions={
-        onProductsIndex ? (
+      <DashboardShell
+        brand={{
+          name: "Wearables Atelier",
+          description: "Admin portal",
+          logo: (
+            <span className="grid h-9 w-16 shrink-0 place-items-center rounded-lg bg-[#242920] px-1">
+              <Image
+                src="/brand/wearables-by-ashabi.png"
+                alt="Wearables by Ashabi"
+                width={844}
+                height={351}
+                sizes="56px"
+                className="h-auto w-14"
+              />
+            </span>
+          ),
+        }}
+        activeItemId={activeItemId}
+        navigation={[
+          {
+            id: "manage",
+            items: [
+              {
+                id: "overview",
+                label: "Overview",
+                icon: AppDots,
+                href: "/admin",
+              },
+              {
+                id: "products",
+                label: "Products",
+                icon: Box,
+                href: "/admin/products",
+                count: products.length,
+              },
+              {
+                id: "orders",
+                label: "Orders",
+                icon: ReceiptTextIcon,
+                href: "/admin/orders",
+                count: pendingCount > 0 ? pendingCount : undefined,
+              },
+              {
+                id: "inventory",
+                label: "Inventory",
+                icon: PackageCheckIcon,
+                href: "/admin/inventory",
+                count:
+                  products.filter(
+                    (product) => stockLevel(product.stock) !== "healthy",
+                  ).length || undefined,
+              },
+              {
+                id: "customers",
+                label: "Customers",
+                icon: UsersIcon,
+                href: "/admin/customers",
+                count: report?.current.customerRecords || undefined,
+              },
+              {
+                id: "analytics",
+                label: "Analytics",
+                icon: ChartNoAxesCombinedIcon,
+                href: "/admin/analytics",
+              },
+              {
+                id: "settings",
+                label: "Settings",
+                icon: Settings2Icon,
+                href: "/admin/settings",
+              },
+            ].filter(
+              (item) =>
+                owner ||
+                !["orders", "customers", "analytics", "settings"].includes(
+                  item.id,
+                ),
+            ),
+          },
+          {
+            id: "storefront",
+            title: "Storefront",
+            items: [
+              {
+                id: "store",
+                label: "View store",
+                icon: AppWindowIcon,
+                href: storefrontHref(),
+                color: "#b3855a",
+              },
+              {
+                id: "shop",
+                label: "Shop page",
+                icon: ShoppingBagIcon,
+                href: storefrontHref("/shop"),
+                color: "#8a8f6a",
+              },
+            ],
+          },
+        ]}
+        title={titleFor(pathname)}
+        status={
+          pathname.startsWith("/admin/products") ? "Catalog" : "Live data"
+        }
+        statusTone="neutral"
+        headerActions={
           <>
             <DashboardButton
               variant="secondary"
-              size="sm"
-              onClick={() => exportProductsCsv(products)}
+              size="icon"
+              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={() => setDark((value) => !value)}
             >
-              <DownloadIcon aria-hidden />
-              Export
+              {dark ? <SunIcon aria-hidden /> : <MoonIcon aria-hidden />}
             </DashboardButton>
-            <DashboardButton
-              variant="primary"
-              size="sm"
-              onClick={() => router.push("/admin/products/new")}
-            >
-              <PlusIcon aria-hidden />
-              New product
-            </DashboardButton>
+            <SignOutButton />
+            <AdminSearch
+              trigger={
+                <DashboardButton
+                  variant="secondary"
+                  size="icon"
+                  aria-label="Search products and orders (Ctrl+K)"
+                >
+                  <SearchIcon aria-hidden />
+                </DashboardButton>
+              }
+            />
           </>
-        ) : undefined
-      }
-    >
-      {children}
-    </DashboardShell>
+        }
+        tabs={
+          onProductsIndex
+            ? [
+                { value: "all", label: "All products" },
+                { value: "clothing", label: "Clothing" },
+                { value: "jewelry", label: "Jewelry" },
+              ]
+            : onOrdersIndex
+              ? [
+                  { value: "all", label: "All" },
+                  { value: "pending", label: "Pending" },
+                  { value: "paid", label: "Paid" },
+                  { value: "fulfilled", label: "Delivered" },
+                  { value: "cancelled", label: "Cancelled" },
+                  { value: "attention", label: "Needs review" },
+                  { value: "failed", label: "Failed" },
+                  { value: "refunded", label: "Refunded" },
+                ]
+              : undefined
+        }
+        tab={onProductsIndex || onOrdersIndex ? tab : undefined}
+        onTabChange={onProductsIndex || onOrdersIndex ? setTab : undefined}
+        filters={
+          onProductsIndex ? (
+            <DashboardFilterMenu
+              label="Sort by"
+              value={sort}
+              options={SORT_OPTIONS}
+              onValueChange={setSort}
+            />
+          ) : undefined
+        }
+        toolbarActions={
+          onProductsIndex ? (
+            <>
+              <DashboardButton
+                variant="secondary"
+                size="sm"
+                onClick={() => exportProductsCsv(products)}
+              >
+                <DownloadIcon aria-hidden />
+                Export
+              </DashboardButton>
+              <DashboardButton
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/admin/products/new")}
+              >
+                <PlusIcon aria-hidden />
+                New product
+              </DashboardButton>
+            </>
+          ) : undefined
+        }
+      >
+        {children}
+      </DashboardShell>
     </div>
   );
 }
 
-export default function AdminShellLayout({ children }: { children: React.ReactNode }) {
+export default function AdminShellLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <AdminCatalogProvider><AdminViewProvider>
-      <AdminShell>{children}</AdminShell>
-    </AdminViewProvider></AdminCatalogProvider>
+    <AdminCatalogProvider>
+      <AdminReportsProvider>
+        <AdminViewProvider>
+          <AdminShell>{children}</AdminShell>
+        </AdminViewProvider>
+      </AdminReportsProvider>
+    </AdminCatalogProvider>
   );
 }

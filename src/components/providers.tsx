@@ -1,19 +1,14 @@
 "use client";
-
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
-import { CatalogProvider, CurrencyProvider, OrdersProvider, SettingsProvider } from "@/lib/store";
-
+import { clearLegacyPaymentKeys } from "@/lib/admin-operations";
 export function Providers({ children }: { children: ReactNode }) {
-  return (
-    <MotionConfig reducedMotion="user">
-      <CurrencyProvider>
-        <CatalogProvider>
-          <OrdersProvider>
-            <SettingsProvider>{children}</SettingsProvider>
-          </OrdersProvider>
-        </CatalogProvider>
-      </CurrencyProvider>
-    </MotionConfig>
-  );
+  useEffect(() => {
+    try {
+      clearLegacyPaymentKeys(window.localStorage);
+    } catch {
+      /* Never read or display legacy payment keys, including malformed storage. */
+    }
+  }, []);
+  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
 }

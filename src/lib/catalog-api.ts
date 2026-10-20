@@ -70,7 +70,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
   if (!response.ok) {
-    if (typeof window !== "undefined" && [401, 403].includes(response.status))
+    if (typeof window !== "undefined" && response.status === 401)
       window.dispatchEvent(new Event("wearables:session-invalid"));
     if (response.status === 401)
       throw new ApiError(
@@ -79,7 +79,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       );
     if (response.status === 403)
       throw new ApiError(
-        "Your account does not have administrator access.",
+        "Your account does not have permission for this action. Owner access may be required.",
         403,
       );
     const body = await response.json().catch(() => null);

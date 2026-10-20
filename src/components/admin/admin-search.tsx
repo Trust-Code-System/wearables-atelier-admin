@@ -14,7 +14,9 @@ import {
   ChartNoAxesCombinedIcon,
   Settings2Icon,
 } from "lucide-react";
-import { useOrders } from "@/lib/store";
+import { useAdminResource } from "@/lib/admin-resource";
+import { useAdminSession } from "./admin-session-guard";
+import type { OrderSummary, Page } from "@/lib/admin-operations";
 import { useAdminCatalog as useCatalog } from "@/lib/admin-catalog";
 import { storefrontHref } from "@/lib/storefront-url";
 import {
@@ -34,7 +36,11 @@ const PAGES = [
   { href: "/admin/orders", label: "Orders", icon: ReceiptTextIcon },
   { href: "/admin/inventory", label: "Inventory", icon: PackageCheckIcon },
   { href: "/admin/customers", label: "Customers", icon: UsersIcon },
-  { href: "/admin/analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: ChartNoAxesCombinedIcon,
+  },
   { href: "/admin/settings", label: "Settings", icon: Settings2Icon },
   { href: storefrontHref(), label: "Storefront", icon: StoreIcon },
 ];
@@ -43,7 +49,11 @@ export function AdminSearch({ trigger }: { trigger: ReactElement }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { products } = useCatalog();
-  const { orders } = useOrders();
+  const session = useAdminSession();
+  const { data } = useAdminResource<Page<OrderSummary>>(
+    open ? "/api/v1/admin/orders?limit=5" : null,
+  );
+  const orders = data?.data ?? [];
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -75,7 +85,16 @@ export function AdminSearch({ trigger }: { trigger: ReactElement }) {
         <CommandList>
           <CommandEmpty>Nothing found. Try a different search.</CommandEmpty>
           <CommandGroup heading="Pages">
-            {PAGES.map((page) => (
+            {PAGES.filter(
+              (page) =>
+                session.role === "owner" ||
+                ![
+                  "/admin/orders",
+                  "/admin/customers",
+                  "/admin/analytics",
+                  "/admin/settings",
+                ].includes(page.href),
+            ).map((page) => (
               <CommandItem key={page.href} onSelect={() => go(page.href)}>
                 <page.icon />
                 {page.label}
@@ -98,13 +117,16 @@ export function AdminSearch({ trigger }: { trigger: ReactElement }) {
             ))}
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Orders">
+          <CommandGroup heading="Recent orders">
             {orders.slice(0, 5).map((order) => (
-              <CommandItem key={order.id} onSelect={() => go("/admin/orders")}>
+              <CommandItem
+                key={order.id}
+                onSelect={() => go(`/admin/orders/${order.id}`)}
+              >
                 <ReceiptTextIcon />
-                <span className="tabular-nums">{order.reference}</span>
+                <span className="tabular-nums">{order.number}</span>
                 <span className="ml-auto truncate text-[0.6875rem] text-muted-foreground">
-                  {order.customer.name}
+                  {order.contact.name}
                 </span>
               </CommandItem>
             ))}
