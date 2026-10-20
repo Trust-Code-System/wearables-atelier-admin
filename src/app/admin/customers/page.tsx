@@ -1,15 +1,18 @@
 "use client";
-
+import Link from "next/link";
 import { useState } from "react";
-import { DownloadIcon, UsersIcon } from "lucide-react";
-import { useCurrency, useOrders } from "@/lib/store";
-import { customersFromOrders } from "@/lib/admin-data";
-import { downloadCsv } from "@/lib/export-csv";
-import { formatDate, formatPrice } from "@/lib/format";
+import { useAdminReport, useAdminResource } from "@/lib/admin-resource";
 import {
-  EmptyResults,
-  ManagementSearch,
+  moneyKobo,
+  operationsPath,
+  type CustomerDetail,
+  type CustomerRecord,
+  type Page,
+} from "@/lib/admin-operations";
+import { LiveDataState } from "@/components/admin/live-data-state";
+import {
   ManagementFilter,
+  ManagementSearch,
   MetricCards,
 } from "@/components/admin/management-ui";
 import { Button } from "@/components/ui/button";
@@ -29,219 +32,314 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-export default function CustomersPage() {
-  const { orders } = useOrders();
-  const { currency } = useCurrency();
-  const customers = customersFromOrders(orders);
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const selected = customers.find((c) => c.key === selectedKey);
-  const visible = customers.filter(
-    (c) =>
-      (filter === "all" ||
-        c.orders.filter((o) => o.status !== "cancelled").length > 1) &&
-      `${c.name} ${c.email} ${c.phone} ${c.location}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase()),
+import { downloadCsv } from "@/lib/export-csv";
+import { formatDate } from "@/lib/format";
+function CustomerView({ record }: { record: CustomerRecord }) {
+  const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+  const resource = useAdminResource<CustomerDetail>(
+    operationsPath(
+      `customers/${record.kind}/${encodeURIComponent(record.id)}`,
+      { limit: "20", cursor: cursors.at(-1) },
+    ),
   );
-  const returning = customers.filter(
-    (c) => c.orders.filter((o) => o.status !== "cancelled").length > 1,
-  ).length;
+  const customer = resource.data;
+  if (!customer) return <LiveDataState {...resource} />;
   return (
-    <div className="flex flex-col gap-5 p-4 sm:p-6">
-      <MetricCards
-        items={[
-          {
-            label: "Customers",
-            value: customers.length,
-            hint: "From local order records",
-          },
-          {
-            label: "Returning customers",
-            value: returning,
-            hint: "More than one non-cancelled order",
-          },
-          {
-            label: "Customer spending",
-            value: formatPrice(
-              customers.reduce((sum, c) => sum + c.spent, 0),
-              currency,
-            ),
-            hint: "Paid and fulfilled orders",
-          },
-          {
-            label: "Orders per customer",
-            value: customers.length
-              ? (orders.length / customers.length).toFixed(1)
-              : "0",
-            hint: "Includes every order status",
-          },
-        ]}
-      />
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="grid max-h-[65vh] gap-5 overflow-auto pr-2">
+      <section className="text-sm">
+        <h3 className="font-medium">Purchasing contact</h3>
+        <p>{customer.contact.name || "Not provided"}</p>
+        <p>{customer.contact.email || "Not provided"}</p>
+        <p>{customer.contact.phone || "Not provided"}</p>
+        {customer.account && (
+          <div className="mt-3">
+            <h3 className="font-medium">Linked account</h3>
+            <p>
+              {customer.account.name} · {customer.account.email}
+            </p>
+            <p>
+              {customer.account.emailVerified
+                ? "Email verified"
+                : "Email not verified"}
+            </p>
+          </div>
+        )}
+      </section>
+      {customer.addresses.length > 0 && (
+        <section>
+          <h3 className="mb-2 font-medium">Saved addresses</h3>
+          {customer.addresses.map((address) => (
+            <div
+              className="mb-2 rounded-lg border p-3 text-sm"
+              key={address.id}
+            >
+              <p>
+                {address.recipientName}
+                {address.isDefault ? " · Default" : ""}
+              </p>
+              <p>
+                {address.line1} {address.line2}
+              </p>
+              <p>
+                {address.city}, {address.state} {address.lga}
+              </p>
+              <p>{address.phone}</p>
+            </div>
+          ))}
+        </section>
+      )}
+      <section>
+        <h3 className="mb-3 font-medium">Order history</h3>
+        {!customer.orders.data.length && (
+          <p className="text-sm text-muted-foreground">
+            No orders linked to this profile.
+          </p>
+        )}
+        {customer.orders.data.map((order) => (
+          <Link
+            href={`/admin/orders/${order.id}`}
+            key={order.id}
+            className="mb-2 block rounded-lg border p-3 text-sm"
+          >
+            <p className="font-medium">{order.number}</p>
+            <p>
+              {formatDate(order.createdAt)} · {moneyKobo(order.totalKobo)}
+            </p>
+            <p>
+              {order.paymentStatus} · {order.fulfilmentStatus}
+            </p>
+          </Link>
+        ))}
+        <div className="mt-3 flex gap-3">
+          <Button
+            variant="outline"
+            disabled={cursors.length === 1}
+            onClick={() => setCursors((values) => values.slice(0, -1))}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!customer.orders.meta.nextCursor}
+            onClick={() =>
+              setCursors((values) => [
+                ...values,
+                customer.orders.meta.nextCursor!,
+              ])
+            }
+          >
+            Next
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+export default function CustomersPage() {
+  const summary = useAdminReport();
+  const [query, setQuery] = useState(""),
+    [kind, setKind] = useState("all"),
+    [selected, setSelected] = useState<CustomerRecord | null>(null),
+    [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+  const resource = useAdminResource<Page<CustomerRecord>>(
+    operationsPath("customers", {
+      q: query.trim(),
+      kind,
+      cursor: cursors.at(-1),
+      limit: "20",
+    }),
+  );
+  const result = resource.data;
+  return (
+    <div className="grid gap-5 p-4 sm:p-6">
+      {summary.data && (
+        <MetricCards
+          items={[
+            {
+              label: "Customer records",
+              value: summary.data.current.customerRecords,
+              hint: "Profiles and separate guest purchases",
+            },
+            {
+              label: "Customer profiles",
+              value: summary.data.current.profiles,
+              hint: "Profiles can exist without accounts",
+            },
+            {
+              label: "Guest purchases",
+              value: summary.data.current.guestPurchases,
+              hint: "Each unlinked order remains independent",
+            },
+          ]}
+        />
+      )}
+      <div className="flex flex-wrap gap-3">
         <ManagementSearch
           value={query}
-          onChange={setQuery}
-          placeholder="Search customers…"
+          onChange={(value) => {
+            setQuery(value);
+            setCursors([undefined]);
+          }}
+          placeholder="Search customer records…"
         />
         <ManagementFilter
-          label="Customer type"
-          value={filter}
+          label="Record type"
+          value={kind}
+          onChange={(value) => {
+            setKind(value);
+            setCursors([undefined]);
+          }}
           options={[
-            { value: "all", label: "All customers" },
-            { value: "returning", label: "Returning customers" },
+            { value: "all", label: "All records" },
+            { value: "profile", label: "Customer profiles" },
+            { value: "guest_order", label: "Guest purchases" },
           ]}
-          onChange={setFilter}
         />
+        <Button variant="outline" onClick={resource.refresh}>
+          Refresh customers
+        </Button>
         <Button
-          className="sm:ml-auto"
           variant="outline"
-          disabled={!visible.length}
+          disabled={!result?.data.length}
           onClick={() =>
-            downloadCsv("wearables-customers.csv", [
+            result &&
+            downloadCsv("wearables-customers-page.csv", [
               [
-                "Name",
-                "Email",
+                "Record ID",
+                "Type",
+                "Contact name",
+                "Contact email",
                 "Phone",
-                "Location",
-                "Orders",
-                "Paid spending NGN",
-                "Last order",
+                "Account email",
+                "Order count",
               ],
-              ...visible.map((c) => [
-                c.name,
-                c.email,
-                c.phone,
-                c.location,
-                c.orders.length,
-                c.spent,
-                c.lastOrder,
+              ...result.data.map((customer) => [
+                customer.id,
+                customer.kind,
+                customer.contact.name ?? "",
+                customer.contact.email ?? "",
+                customer.contact.phone ?? "",
+                customer.account?.email ?? "",
+                customer.orderCount,
               ]),
             ])
           }
         >
-          <DownloadIcon />
-          Export customers
+          Export current page
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {visible.length} customers · These are order contacts, not registered
-        customer accounts.
+      <p className="text-sm text-muted-foreground">
+        Guest purchases are not combined with profiles by email. Opening a
+        record shows only its own linked history.
       </p>
-      {!visible.length ? (
-        <EmptyResults>
-          <UsersIcon aria-hidden className="mx-auto mb-3 size-6" />
-          No matching customers. Profiles appear when this admin browser has
-          order records.
-        </EmptyResults>
+      {!result ? (
+        <LiveDataState {...resource} />
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead className="max-lg:hidden">Location</TableHead>
-                <TableHead className="text-right">Orders</TableHead>
-                <TableHead className="text-right">Spent</TableHead>
-                <TableHead className="max-md:hidden">Last order</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((customer) => (
-                <TableRow key={customer.key}>
-                  <TableCell>
-                    <button
-                      className="flex items-center gap-3 text-left hover:opacity-80"
-                      onClick={() => setSelectedKey(customer.key)}
-                      aria-label={`View customer ${customer.name}`}
-                    >
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold">
-                        {customer.name
-                          .split(" ")
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .map((part) => part[0])
-                          .join("") || "?"}
-                      </span>
-                      <span>
-                        <span className="block font-medium">
-                          {customer.name}
-                        </span>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          {customer.email || customer.phone}
-                        </span>
-                      </span>
-                    </button>
-                  </TableCell>
-                  <TableCell className="max-lg:hidden text-muted-foreground">
-                    {customer.location}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {customer.orders.length}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatPrice(customer.spent, currency)}
-                  </TableCell>
-                  <TableCell className="max-md:hidden text-muted-foreground">
-                    {formatDate(customer.lastOrder)}
-                  </TableCell>
+        <>
+          <div className="overflow-hidden rounded-xl border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Record type</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Orders</TableHead>
+                  <TableHead>Created</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {result.data.map((customer) => (
+                  <TableRow key={`${customer.kind}:${customer.id}`}>
+                    <TableCell>
+                      <button
+                        className="text-left font-medium underline-offset-4 hover:underline"
+                        onClick={() => setSelected(customer)}
+                      >
+                        {customer.contact.name ||
+                          customer.account?.name ||
+                          "Customer profile"}
+                      </button>
+                      {customer.account && (
+                        <p className="text-xs text-muted-foreground">
+                          Account: {customer.account.email}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {customer.kind === "guest_order"
+                          ? "Guest purchase"
+                          : customer.account
+                            ? "Account profile"
+                            : "Independent profile"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <p>
+                        {customer.contact.email || "No purchasing email saved"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {customer.contact.phone}
+                      </p>
+                    </TableCell>
+                    <TableCell>{customer.orderCount}</TableCell>
+                    <TableCell>{formatDate(customer.createdAt)}</TableCell>
+                  </TableRow>
+                ))}
+                {!result.data.length && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center">
+                      No matching customer records.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              disabled={cursors.length === 1}
+              onClick={() => setCursors((values) => values.slice(0, -1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!result.meta.nextCursor}
+              onClick={() =>
+                setCursors((values) => [...values, result.meta.nextCursor!])
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </>
       )}
       <Dialog
-        open={!!selected}
-        onOpenChange={(open) => !open && setSelectedKey(null)}
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
       >
-        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{selected?.name}</DialogTitle>
+            <DialogTitle>
+              {selected?.contact.name ||
+                selected?.account?.name ||
+                "Customer record"}
+            </DialogTitle>
             <DialogDescription>
-              Contact details and order history in this browser.
+              {selected?.kind === "guest_order"
+                ? "Contact and history from this guest purchase."
+                : "Saved profile, linked account and purchasing history."}
             </DialogDescription>
           </DialogHeader>
           {selected && (
-            <>
-              <dl className="grid gap-3 rounded-lg bg-secondary p-4 text-sm sm:grid-cols-2">
-                {[
-                  ["Email", selected.email || "Not provided"],
-                  ["Phone", selected.phone || "Not provided"],
-                  ["Location", selected.location],
-                  ["Paid spending", formatPrice(selected.spent, currency)],
-                ].map(([label, value]) => (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className="mt-1 break-words">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <h2 className="font-semibold">Order history</h2>
-              <ul className="divide-y">
-                {selected.orders.map((order) => (
-                  <li key={order.id} className="py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">{order.reference}</p>
-                      <Badge className="capitalize" variant="secondary">
-                        {order.status}
-                      </Badge>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {formatDate(order.createdAt)} ·{" "}
-                      {formatPrice(order.totalNGN, currency)}
-                    </p>
-                    <p className="mt-2 text-sm">
-                      {order.items
-                        .map((item) => `${item.qty} × ${item.name}`)
-                        .join(", ")}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <CustomerView
+              key={`${selected.kind}:${selected.id}`}
+              record={selected}
+            />
           )}
         </DialogContent>
       </Dialog>
