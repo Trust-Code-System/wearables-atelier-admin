@@ -26,7 +26,7 @@ export function AdminSessionGuard({ children }: { children: React.ReactNode }) {
       const checkId = ++currentCheck;
       try {
         const response = await fetch(
-          `${getApiBaseUrl()}/api/auth/get-session`,
+          `${getApiBaseUrl()}/api/admin-auth/get-session`,
           {
             credentials: "include",
             cache: "no-store",

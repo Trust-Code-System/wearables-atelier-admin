@@ -26,14 +26,14 @@ export function LoginForm({
     setBusy(true);
     setError("");
     try {
-      await api("/api/auth/sign-in/email", {
+      await api("/api/admin-auth/sign-in/email", {
         method: "POST",
         body: JSON.stringify({
           email: String(data.get("email")).trim(),
           password: String(data.get("password")),
         }),
       });
-      const session = await api<unknown>("/api/auth/get-session");
+      const session = await api<unknown>("/api/admin-auth/get-session");
       if (!isAdminSession(session))
         throw new Error(
           "This account does not have administrator access. Sign in with an administrator account.",

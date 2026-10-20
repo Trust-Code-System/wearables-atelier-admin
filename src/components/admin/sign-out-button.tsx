@@ -19,7 +19,7 @@ export function SignOutButton() {
         if (busy) return;
         setBusy(true);
         try {
-          await api("/api/auth/sign-out", { method: "POST", body: "{}" });
+          await api("/api/admin-auth/sign-out", { method: "POST", body: "{}" });
           router.replace("/login");
           router.refresh();
         } catch {
